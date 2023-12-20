@@ -17,16 +17,16 @@ source("MFM_MN.R")
 #
 M_list_10by6 <- readRDS("C:/Users/Asus/Desktop/Matrix-t-clustering/bayesian_clustering_supplement/M_10by6_list.rds")
 #
-MCMC.total <- 15
+MCMC.total <- 100
 MCMC.burnin <- ceiling(MCMC.total*0.30)
 # MCMC.thin <- 10
-# registerDoParallel(cores=50)
+#registerDoParallel(cores=8)
 # helper function AR(1) correlation matrix
-ar1_cor <- function(n, rho) {
-  exponent <- abs(matrix(1:n - 1, nrow = n, ncol = n, byrow = TRUE) - 
-                    (1:n - 1))
-  rho^exponent
-}
+# ar1_cor <- function(n, rho) {
+#   exponent <- abs(matrix(1:n - 1, nrow = n, ncol = n, byrow = TRUE) - 
+#                     (1:n - 1))
+#   rho^exponent
+# }
 ###
 # http://sherrytowers.com/2013/10/24/k-means-clustering/
 # AIC for kmeans
@@ -54,21 +54,7 @@ simulation_settings <- data.frame(expand.grid(signal_strength = 1,
 ################
 # iii = as.numeric(readline(prompt = "Enter the setting id: "))
 iii = 1
-################
-### values of params####
-data = dat_sim
-alpha = (1+dim(dat_sim)[1])/2
-beta = (1+dim(dat_sim)[1])/2
-RHO=1
-a_gamma = 6
-b_gamma = 0.1
-a_nu = 5
-b_nu = 0.1
-#nu = 5
-M0=(apply(dat_sim, c(1,2), max) + apply(dat_sim, c(1,2), min))/2
-Sigma0=diag( ((apply(dat_sim, c(1), max)-apply(dat_sim, c(1), min))/4)^2 ) 
-Omega0=diag( ((apply(dat_sim, c(2), max)-apply(dat_sim, c(2), min))/4)^2 ) 
-initNClusters =3
+
 #GAMMA = 1
 # GAMMA = as.numeric(readline(prompt = "Enter the value of concentration parameter for Dirichlet distribution: "))
 ################
@@ -83,13 +69,29 @@ for(i in 1:cluster_num){
   assign(paste0("M",i), M_list_10by6[[i]])
 }
 
-###True params
-gamma <- rgamma(1, shape = a_gamma, scale = b_gamma)
-Sigma1 <- rWishart(1,2*alpha,(1/gamma)*solve(PSI1)) ## we multiply 2 with alpha to ensure that nu parameter is GREATER than dim(PSI1)
-Sigma1 <- matrix(Sigma1,nrow = nrow(Sigma1) ,ncol = ncol(Sigma1))
-nu <- rtgamma(1, a_nu, b_nu, min = 1.0001, max = 1e+09) ## nu must be >1 bcz nu+p-1>dim( )
-W <- MCMCpack::riwish(nu+p-1,Sigma1)
-Sigma2 <- MCMCpack::riwish(2*beta, gamma*PSI2)# Sigma2 <- (noise_factor^2)*ar1_cor(ncol(M1),rho_factor)
+
+################
+### values of params####
+# data = dat_sim
+# alpha = 5.5
+# beta = 5.5
+# RHO=1
+# a_gamma = 6
+# b_gamma = 0.1
+# a_nu = 5
+# b_nu = 0.1
+# M0=(apply(dat_sim, c(1,2), max) + apply(dat_sim, c(1,2), min))/2
+# Sigma0=diag( ((apply(dat_sim, c(1), max)-apply(dat_sim, c(1), min))/4)^2 ) 
+# Omega0=diag( ((apply(dat_sim, c(2), max)-apply(dat_sim, c(2), min))/4)^2 ) 
+# initNClusters =3
+# 
+# ###True params
+# gamma <- rgamma(1, shape = a_gamma, scale = b_gamma)
+# Sigma1 <- rWishart(1,2*alpha,(1/gamma)*solve(PSI1)) ## we multiply 2 with alpha to ensure that nu parameter is GREATER than dim(PSI1)
+# Sigma1 <- matrix(Sigma1,nrow = nrow(Sigma1) ,ncol = ncol(Sigma1))
+# nu <- rtgamma(1, a_nu, b_nu, min = 1.0001, max = 1e+09) ## nu must be >1 bcz nu+p-1>dim( )
+# W <- MCMCpack::riwish(nu+p-1,Sigma1)
+# Sigma2 <- MCMCpack::riwish(2*beta, gamma*PSI2)
 
 # set.seed(0)
 num_replicates <- 1
@@ -106,19 +108,55 @@ start_time <- Sys.time()
 ###
 sim_10by6 <- foreach(j = 1:num_replicates, .errorhandling = "pass")%dopar%{
   # 
-  set.seed(j+123456*setting_id)
-  W <- clusterGeneration::rcorrmatrix(d = nrow(M1))
-  #
+  set.seed(j+123456*setting_id) 
+  # W <- clusterGeneration::rcorrmatrix(d = nrow(M1))
+  ###########################
+  #### true values of params####
+  alpha = 5.5
+  beta = 5.5
+  RHO = 1
+  a_gamma = 5
+  b_gamma = 0.1
+  a_nu = 5
+  b_nu = 0.1
+  p = 10
+  q = 6
+  #### generated params #### 
+  gamma <- rgamma(1, shape = a_gamma, scale = b_gamma)
+  
+  PSI1_cluster1= (0.5^2)*diag(1,p)
+  PSI1_cluster2= diag(1,p)
+  PSI1_cluster3= (1.5^2)*diag(1,p)
+  ##
+  PSI2_cluster1= (0.5^2)*diag(1,q)
+  PSI2_cluster2= diag(1,q)
+  PSI2_cluster3= (1.5^2)*diag(1,q)
+  ##  
+  Sigma1_cluster1 <- matrix(rWishart(1,2*alpha,(1/gamma)*solve(PSI1_cluster1)),nrow = p ,ncol = p) ## we multiply 2 with alpha to ensure that nu parameter is GREATER than dim(PSI1)
+  Sigma1_cluster2 <- matrix(rWishart(1,2*alpha,(1/gamma)*solve(PSI1_cluster2)),nrow = p ,ncol = p)
+  Sigma1_cluster3 <- matrix(rWishart(1,2*alpha,(1/gamma)*solve(PSI1_cluster3)),nrow = p ,ncol = p)
+  ##
+  Sigma2_cluster1 <- MCMCpack::riwish(2*beta, gamma*PSI2_cluster1)
+  Sigma2_cluster2 <- MCMCpack::riwish(2*beta, gamma*PSI2_cluster2)
+  Sigma2_cluster3 <- MCMCpack::riwish(2*beta, gamma*PSI2_cluster3)
+  
+  
+  nu <- rtgamma(1, a_nu, b_nu, min = 1.0001, max = 1e+09) ## nu must be >1 bcz nu+p-1>dim( )
+  # W <- MCMCpack::riwish(nu+p-1,Sigma1)
+
   if(cluster_num == 3){
-    dat_sim_cluster1 <-  mniw::rMNorm(total_sample_size*cluster_proportion[1], 
-                                      Lambda = M1*signal_strength, 
-                                      SigmaR = W, SigmaC = Sigma2)
-    dat_sim_cluster2 <-  mniw::rMNorm(total_sample_size*cluster_proportion[2], 
-                                      Lambda = M2*signal_strength, 
-                                      SigmaR = W, SigmaC = Sigma2)
-    dat_sim_cluster3 <-  mniw::rMNorm(total_sample_size*cluster_proportion[3], 
-                                      Lambda = M3*signal_strength, 
-                                      SigmaR = W, SigmaC = Sigma2)
+    dat_sim_cluster1 <-  MixMatrix::rmatrixt(total_sample_size*cluster_proportion[1], df = nu,
+                                             mean = M1*signal_strength, 
+                                             U = Sigma1_cluster1 , 
+                                             V = Sigma2_cluster1)  
+    dat_sim_cluster2 <-  MixMatrix::rmatrixt(total_sample_size*cluster_proportion[2], df = nu,
+                                             mean = M2*signal_strength, 
+                                             U = Sigma1_cluster2 , 
+                                             V = Sigma2_cluster2)
+    dat_sim_cluster3 <-  MixMatrix::rmatrixt(total_sample_size*cluster_proportion[3], df = nu,
+                                             mean = M3*signal_strength, 
+                                             U = Sigma1_cluster3 , 
+                                             V = Sigma2_cluster3)
     # 
     dat_sim <- abind(dat_sim_cluster1, dat_sim_cluster2, dat_sim_cluster3,
                      along = 3)
@@ -128,24 +166,30 @@ sim_10by6 <- foreach(j = 1:num_replicates, .errorhandling = "pass")%dopar%{
                                                total_sample_size*cluster_proportion[3]))
     
   } else if(cluster_num == 6){
-    dat_sim_cluster1 <-  mniw::rMNorm(total_sample_size*cluster_proportion[1], 
-                                      Lambda = M1*signal_strength, 
-                                      SigmaR = W, SigmaC = Sigma2)
-    dat_sim_cluster2 <-  mniw::rMNorm(total_sample_size*cluster_proportion[2], 
-                                      Lambda = M2*signal_strength, 
-                                      SigmaR = W, SigmaC = Sigma2)
-    dat_sim_cluster3 <-  mniw::rMNorm(total_sample_size*cluster_proportion[3], 
-                                      Lambda = M3*signal_strength, 
-                                      SigmaR = W, SigmaC = Sigma2)
-    dat_sim_cluster4 <-  mniw::rMNorm(total_sample_size*cluster_proportion[4], 
-                                      Lambda = M4*signal_strength, 
-                                      SigmaR = W, SigmaC = Sigma2)
-    dat_sim_cluster5 <-  mniw::rMNorm(total_sample_size*cluster_proportion[5], 
-                                      Lambda = M5*signal_strength, 
-                                      SigmaR = W, SigmaC = Sigma2)
-    dat_sim_cluster6 <-  mniw::rMNorm(total_sample_size*cluster_proportion[6], 
-                                      Lambda = M6*signal_strength, 
-                                      SigmaR = W, SigmaC = Sigma2)
+    dat_sim_cluster1 <-  MixMatrix::rmatrixt(total_sample_size*cluster_proportion[1], df = nu,
+                                             mean = M1*signal_strength, 
+                                             U = Sigma1_cluster1 , 
+                                             V = Sigma2_cluster1)  
+    dat_sim_cluster2 <-  MixMatrix::rmatrixt(total_sample_size*cluster_proportion[2], df = nu,
+                                             mean = M2*signal_strength, 
+                                             U = Sigma1_cluster2 , 
+                                             V = Sigma2_cluster2)
+    dat_sim_cluster3 <-  MixMatrix::rmatrixt(total_sample_size*cluster_proportion[3], df = nu,
+                                             mean = M3*signal_strength, 
+                                             U = Sigma1_cluster3 , 
+                                             V = Sigma2_cluster3)
+    dat_sim_cluster4 <-  MixMatrix::rmatrixt(total_sample_size*cluster_proportion[4], df = nu,
+                                             mean = M4*signal_strength, 
+                                             U = Sigma1_cluster1 , 
+                                             V = Sigma2_cluster2)
+    dat_sim_cluster5 <-  MixMatrix::rmatrixt(total_sample_size*cluster_proportion[5], df = nu,
+                                             mean = M5*signal_strength, 
+                                             U = Sigma1_cluster3 , 
+                                             V = Sigma2_cluster1)
+    dat_sim_cluster6 <-  MixMatrix::rmatrixt(total_sample_size*cluster_proportion[6], df = nu,
+                                             mean = M6*signal_strength, 
+                                             U = Sigma1_cluster2 , 
+                                             V = Sigma2_cluster3)
     
     dat_sim <- abind(dat_sim_cluster1, dat_sim_cluster2, dat_sim_cluster3,  dat_sim_cluster4,
                      dat_sim_cluster5, dat_sim_cluster6,
@@ -161,6 +205,11 @@ sim_10by6 <- foreach(j = 1:num_replicates, .errorhandling = "pass")%dopar%{
   # combine them
   dat_sim_vector <- t(apply(dat_sim, c(3), c))
   
+  ###params###
+  M0=(apply(dat_sim, c(1,2), max) + apply(dat_sim, c(1,2), min))/2
+  Sigma0=diag( ((apply(dat_sim, c(1), max)-apply(dat_sim, c(1), min))/4)^2 )
+  Omega0=diag( ((apply(dat_sim, c(2), max)-apply(dat_sim, c(2), min))/4)^2 )
+
   # pairwise distance between matrices
   # nuclear norm, spectral norm
   dat_sim_matrix_dist_spectral <- matrix(0, nrow = total_sample_size, ncol = total_sample_size)
@@ -177,22 +226,17 @@ sim_10by6 <- foreach(j = 1:num_replicates, .errorhandling = "pass")%dopar%{
   # run MFM analysis
   temp_time1 <- Sys.time()
   
+  data = dat_sim
+  initNClusters = 3
+  niterations = 20
+  
   temp_MFM_rlt <- MFM_Mxt_equal_cov(data, niterations, alpha, beta, RHO, a_gamma, b_gamma, a_nu, b_nu, M0, Sigma0, Omega0, initNClusters, MLE.initial=FALSE)
-    
-  # temp_MFM_rlt <- MFM_Mxt_equal_cov(data=dat_sim, 
-  #                                   niterations=MCMC.total, 
-  #                                   alpha=(1+dim(dat_sim)[1])/2, beta=(1+dim(dat_sim)[1])/2, 
-  #                                   RHO=1,a_gamma = 6,b_gamma = 0.1,a_nu = 5,b_nu = 0.1,
-  #                                   M0=(apply(dat_sim, c(1,2), max) + apply(dat_sim, c(1,2), min))/2, 
-  #                                   Sigma0=diag( ((apply(dat_sim, c(1), max)-apply(dat_sim, c(1), min))/4)^2 ), 
-  #                                   Omega0=diag( ((apply(dat_sim, c(2), max)-apply(dat_sim, c(2), min))/4)^2 ), 
-  #                                   initNClusters=cluster_num*4, 
-  #                                   MLE.initial=TRUE)
+
   # 
-  ii = length(temp_MFM_rlt$Iterates)
+  ii = length(temp_MFM_rlt$Iterates) 
   RI_MFM_trace <- sapply(1:MCMC.total, function(x) fossil::rand.index(true_cluster_membership,temp_MFM_rlt$Iterates[[ii]]$zout))
   ARI_MFM_trace <- sapply(1:MCMC.total, function(x) mclust::adjustedRandIndex(true_cluster_membership,temp_MFM_rlt$Iterates[[ii]]$zout))
-  }
+  
   ### 
   temp_time2 <- Sys.time()
   temp_DP_rlt <- DP_Mxt_equal_cov(data, niterations, alpha, beta, RHO,a_gamma,b_gamma,a_nu, b_nu, M0, Sigma0, Omega0, initNClusters, MLE.initial=FALSE)
@@ -211,6 +255,10 @@ sim_10by6 <- foreach(j = 1:num_replicates, .errorhandling = "pass")%dopar%{
   temp_kmeans_aic <- rep(NA, length=length(k_vec))
   temp_kmeans_bic <- rep(NA, length=length(k_vec))
   ##
+  iters <- temp_MFM_rlt$Iterates[-(1:burn)]
+  n <- length(iters[[1]][[1]])
+  niters <- length(iters)
+
   for(k in 1:length(k_vec)){
     # kmeans each row is a data point
     temp_kmeans_list[[k]] <- kmeans(dat_sim_vector, 

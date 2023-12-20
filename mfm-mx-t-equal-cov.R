@@ -1,18 +1,19 @@
 
 #####values of the params################
-data = dat_sim
-alpha = (1+dim(dat_sim)[1])/2
-beta = (1+dim(dat_sim)[1])/2
-RHO=1
-a_gamma = 3
-b_gamma = 0.1
-a_nu = 2
-b_nu = 0.1
-#nu = 5
-M0=(apply(dat_sim, c(1,2), max) + apply(dat_sim, c(1,2), min))/2
-Sigma0=diag( ((apply(dat_sim, c(1), max)-apply(dat_sim, c(1), min))/4)^2 ) 
-Omega0=diag( ((apply(dat_sim, c(2), max)-apply(dat_sim, c(2), min))/4)^2 ) 
-initNClusters =3
+# data = dat_sim
+# alpha = (1+dim(dat_sim)[1])/2
+# beta = (1+dim(dat_sim)[1])/2
+# RHO=1
+# a_gamma = 3
+# b_gamma = 0.1
+# a_nu = 2
+# b_nu = 0.1
+# #nu = 5
+# M0=(apply(dat_sim, c(1,2), max) + apply(dat_sim, c(1,2), min))/2
+# Sigma0=diag( ((apply(dat_sim, c(1), max)-apply(dat_sim, c(1), min))/4)^2 ) 
+# Omega0=diag( ((apply(dat_sim, c(2), max)-apply(dat_sim, c(2), min))/4)^2 ) 
+# initNClusters =3
+rm(list=ls()) ### clears thr R workspace
 ##########################################
 #########################################
 MFM_Mxt_equal_cov <- function(data, niterations, alpha, beta, RHO, a_gamma, b_gamma, a_nu, b_nu, M0, Sigma0, Omega0, initNClusters, MLE.initial=FALSE)
@@ -103,7 +104,6 @@ MFM_Mxt_equal_cov <- function(data, niterations, alpha, beta, RHO, a_gamma, b_ga
   
   # MCMCpack::InvWishart
   History <- vector("list", niterations)
-  
   
   ##start Gibb's sampling
   for (iter in 1:niterations)
